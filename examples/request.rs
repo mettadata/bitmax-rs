@@ -5,15 +5,12 @@ use failure::Fallible;
 async fn main() -> Fallible<()> {
     env_logger::init();
 
-    let private_key: String =
-        std::env::var("BITMAX_PRIVATE").unwrap();
+    let private_key: String = std::env::var("BITMAX_PRIVATE").unwrap();
     let public_key: String = std::env::var("BITMAX_PUBLIC").unwrap();
 
-    let client = BitMaxClient::with_auth(&public_key, &private_key)?;
+    let client = BitMaxClient::with_auth(&public_key, &private_key, Some(6))?;
 
-    let response = client
-        .request(request::MarginRisk)
-        .await?;
+    let response = client.request(request::MarginRisk).await?;
 
     println!("{:#?}", response);
     Ok(())

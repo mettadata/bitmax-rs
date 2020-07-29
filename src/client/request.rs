@@ -218,5 +218,3 @@ impl Request for MarginRisk {
     const NEEDS_AUTH: bool = true;
     const API_PATH: &'static str = "/margin/risk";
 }
-
-

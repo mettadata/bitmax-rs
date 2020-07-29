@@ -1,12 +1,12 @@
 use chrono::Utc;
 use failure::Fallible;
 use hmac::{Hmac, Mac, NewMac};
+use log::debug;
 use reqwest::{Client, Method, RequestBuilder, Response};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{from_str, to_string, to_value, Value};
 use sha2::Sha256;
 use url::Url;
-use log::debug;
 
 pub mod request;
 
@@ -19,6 +19,7 @@ const API_URL: &'static str = "/api/pro/v1";
 struct Auth {
     pub public_key: String,
     pub private_key_bytes: Vec<u8>,
+    pub account_group: Option<u32>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -38,14 +39,30 @@ impl BitMaxClient {
         Default::default()
     }
 
-    pub fn with_auth(public_key: &str, private_key: &str) -> Fallible<Self> {
+    pub fn with_auth(
+        public_key: &str,
+        private_key: &str,
+        account_group: Option<u32>,
+    ) -> Fallible<Self> {
         Ok(Self {
             auth: Some(Auth {
                 private_key_bytes: base64::decode(private_key)?,
                 public_key: public_key.into(),
+                account_group,
             }),
             client: Default::default(),
         })
+    }
+
+    /// Account group is needed for most of the account requests.
+    /// Make the `Account` request to get your account group.
+    pub fn set_account_group(&mut self, account_group: u32) -> Fallible<()> {
+        self.auth
+            .as_mut()
+            .ok_or_else(|| failure::format_err!("missing auth"))?
+            .account_group = Some(account_group);
+
+        Ok(())
     }
 
     fn attach_auth_headers(
@@ -56,7 +73,7 @@ impl BitMaxClient {
         let auth = self
             .auth
             .as_ref()
-            .ok_or_else(|| failure::format_err!("Missing auth key"))?;
+            .ok_or_else(|| failure::format_err!("missing auth keys"))?;
 
         let timestamp = Utc::now().timestamp_millis();
 
@@ -75,7 +92,16 @@ impl BitMaxClient {
 
     pub async fn request<Q: Request>(&self, request: Q) -> Fallible<Q::Response> {
         let url = if Q::NEEDS_ACCOUNT_GROUP {
-            format!("{}/6{}{}", HTTP_URL, API_URL, request.render_endpoint())
+            format!(
+                "{}/{}{}{}",
+                HTTP_URL,
+                self.auth
+                    .as_ref()
+                    .and_then(|a| a.account_group.as_ref())
+                    .ok_or_else(|| failure::format_err!("missing account group"))?,
+                API_URL,
+                request.render_endpoint()
+            )
         } else {
             format!("{}{}{}", HTTP_URL, API_URL, request.render_endpoint())
         };

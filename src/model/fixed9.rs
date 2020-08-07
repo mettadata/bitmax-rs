@@ -3,6 +3,8 @@ use std::{
     fmt,
     ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign},
 };
+use std::str::FromStr;
+use failure::Fallible;
 
 // Fixed9 represents a fixed-point number with precision 10^-9
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Default, Debug)]
@@ -110,6 +112,23 @@ impl<'de> Visitor<'de> for Fixed9Visitor {
     where
         E: serde::de::Error,
     {
+        v.parse().map_err(|e| E::custom(e))
+    }
+}
+
+impl<'de> Deserialize<'de> for Fixed9 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(Fixed9Visitor {})
+    }
+}
+
+impl FromStr for Fixed9 {
+    type Err = failure::Error;
+
+    fn from_str(v: &str) -> Fallible<Self> {
         let (v, sign): (&str, i64) = if v.starts_with('-') {
             (&v[1..], -1)
         } else {
@@ -123,7 +142,7 @@ impl<'de> Visitor<'de> for Fixed9Visitor {
             .next()
             .unwrap()
             .parse()
-            .map_err(|_| E::custom("couldn't parse decimal part of fixed9 value"))?;
+            .map_err(|_| failure::format_err!("couldn't parse decimal part of fixed9 value"))?;
         let residual: i64 = match parts.next() {
             Some(value) => {
                 if value == "" {
@@ -133,7 +152,7 @@ impl<'de> Visitor<'de> for Fixed9Visitor {
 
                     value
                         .parse::<i64>()
-                        .map_err(|_| E::custom("couldn't parse float part of fixed9 value"))?
+                        .map_err(|_| failure::format_err!("couldn't parse float part of fixed9 value"))?
                         * MULT_TABLE[9 - value.len()]
                 }
             }
@@ -141,14 +160,5 @@ impl<'de> Visitor<'de> for Fixed9Visitor {
         };
 
         Ok(Fixed9(sign * (decimals * FIXED9_DECIMALS + residual)))
-    }
-}
-
-impl<'de> Deserialize<'de> for Fixed9 {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_str(Fixed9Visitor {})
     }
 }

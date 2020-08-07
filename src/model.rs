@@ -35,6 +35,12 @@ pub enum AccountType {
     Margin,
 }
 
+impl Default for AccountType {
+    fn default() -> Self {
+        AccountType::Cash
+    }
+}
+
 // Price/qty pair
 pub type PriceQty = (Fixed9, Fixed9);
 
@@ -148,6 +154,7 @@ pub enum MessageType {
     Trades,
     PlaceOrder,
     CancelOrder,
+    CancelAll,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -367,7 +374,7 @@ pub enum ExecInstruction {
     #[serde(rename = "NULL_VAL")]
     Null,
 }
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum OrderStatus {
     New,
     PendingNew,
@@ -445,4 +452,64 @@ pub struct CancelOrderResponse {
     pub action: MessageType,
     #[serde(flatten)]
     pub info: CancelOrderInfo,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct AckCancelAllInfo {
+    #[serde(deserialize_with = "empty_string_as_none")]
+    pub symbol: Option<String>,
+    pub timestamp: i64,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(tag = "status", content = "info")]
+pub enum CancelAllInfo {
+    #[serde(rename = "Ack")]
+    Acknowledged(AckCancelAllInfo),
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CancelAllResponse {
+    pub account_id: String,
+    pub ac: AccountType,
+    pub action: MessageType,
+    #[serde(flatten)]
+    pub info: CancelAllInfo,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryOrder {
+    pub ac: AccountType,
+    pub account_id: String,
+    pub avg_px: Fixed9,
+    pub cum_fee: Fixed9,
+    pub cum_qty: Fixed9,
+    #[serde(deserialize_with = "empty_string_as_none")]
+    pub error_code: Option<String>,
+    pub fee_asset: String,
+    pub last_exec_time: i64,
+    pub order_id: String,
+    pub order_qty: Fixed9,
+    pub order_type: OrderType,
+    pub price: Fixed9,
+    pub seq_num: u64,
+    pub sending_time: i64,
+    pub side: OrderSide,
+    #[serde(deserialize_with = "empty_string_as_none")]
+    pub stop_price: Option<Fixed9>,
+    pub symbol: String,
+    pub status: OrderStatus,
+    pub exec_inst: ExecInstruction,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OrderHistoryPage {
+    pub data: Vec<HistoryOrder>,
+    pub has_next: bool,
+    pub limit: u32,
+    pub page: u32,
+    pub page_size: u32,
 }

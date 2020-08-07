@@ -343,3 +343,131 @@ impl Request for CancelOrder<'_> {
         Some(self.account_type)
     }
 }
+
+#[derive(Serialize, Clone, Debug)]
+pub struct CancelAllOrders<'a> {
+    #[serde(skip)]
+    pub account_type: AccountType,
+    pub symbol: Option<&'a str>,
+}
+
+impl Request for CancelAllOrders<'_> {
+    type Response = model::CancelAllInfo;
+
+    const METHOD: Method = Method::DELETE;
+    const NEEDS_ACCOUNT_GROUP: bool = true;
+    const NEEDS_AUTH: bool = true;
+    const API_PATH: &'static str = "/order/all";
+
+    fn account_type(&self) -> Option<AccountType> {
+        Some(self.account_type)
+    }
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OrderStatus<'a> {
+    #[serde(skip)]
+    pub account_type: AccountType,
+    pub order_id: &'a str,
+}
+
+impl Request for OrderStatus<'_> {
+    type Response = model::Order;
+
+    const METHOD: Method = Method::GET;
+    const NEEDS_ACCOUNT_GROUP: bool = true;
+    const NEEDS_AUTH: bool = true;
+    const API_PATH: &'static str = "/order/status";
+
+    fn account_type(&self) -> Option<AccountType> {
+        Some(self.account_type)
+    }
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OrdersStatus<'a> {
+    #[serde(skip)]
+    pub account_type: AccountType,
+    pub order_id: &'a [&'a str],
+}
+
+impl Request for OrdersStatus<'_> {
+    type Response = Vec<model::Order>;
+
+    const METHOD: Method = Method::GET;
+    const NEEDS_ACCOUNT_GROUP: bool = true;
+    const NEEDS_AUTH: bool = true;
+    const API_PATH: &'static str = "/order/status";
+
+    fn account_type(&self) -> Option<AccountType> {
+        Some(self.account_type)
+    }
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct OpenOrders {
+    #[serde(skip)]
+    pub account_type: AccountType,
+}
+
+impl Request for OpenOrders {
+    type Response = Vec<model::Order>;
+
+    const METHOD: Method = Method::GET;
+    const NEEDS_ACCOUNT_GROUP: bool = true;
+    const NEEDS_AUTH: bool = true;
+    const API_PATH: &'static str = "/order/open";
+
+    fn account_type(&self) -> Option<AccountType> {
+        Some(self.account_type)
+    }
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OrderHistoryCurrent<'a> {
+    #[serde(skip)]
+    pub account_type: AccountType,
+    pub n: Option<u32>,
+    pub symbol: Option<&'a str>,
+    pub executed_only: bool,
+}
+
+impl Request for OrderHistoryCurrent<'_> {
+    type Response = Vec<model::Order>;
+
+    const METHOD: Method = Method::GET;
+    const NEEDS_ACCOUNT_GROUP: bool = true;
+    const NEEDS_AUTH: bool = true;
+    const API_PATH: &'static str = "/order/hist/current";
+
+    fn account_type(&self) -> Option<AccountType> {
+        Some(self.account_type)
+    }
+}
+
+#[derive(Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct OrderHistory<'a> {
+    #[serde(rename = "category")]
+    pub account_type: AccountType,
+    pub symbol: Option<&'a str>,
+    pub order_type: Option<model::OrderType>,
+    pub side: Option<model::OrderSide>,
+    pub status: Option<model::OrderStatus>,
+    pub start_time: Option<i64>,
+    pub end_time: Option<i64>,
+    pub page: Option<u32>,
+    pub page_size: Option<u32>,
+}
+
+impl Request for OrderHistory<'_> {
+    type Response = model::OrderHistoryPage;
+
+    const METHOD: Method = Method::GET;
+    const NEEDS_ACCOUNT_GROUP: bool = true;
+    const NEEDS_AUTH: bool = true;
+    const API_PATH: &'static str = "/order/hist";
+}

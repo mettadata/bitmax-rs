@@ -78,7 +78,6 @@ impl BitMaxClient {
         let timestamp = Utc::now().timestamp_millis();
 
         let prehash = format!("{}+{}", timestamp, &api_path[1..]); // skip the first `/`
-        debug!("timestamp: {}", &prehash);
         let mut mac = Hmac::<Sha256>::new_varkey(&auth.private_key_bytes)
             .map_err(|e| failure::format_err!("{}", e))?;
         mac.update(prehash.as_bytes());
@@ -105,12 +104,26 @@ impl BitMaxClient {
         } else {
             format!("{}{}{}", HTTP_URL, API_URL, request.render_endpoint())
         };
-        let url = Url::parse_with_params(&url, request.to_url_query())?;
 
-        let req = self
-            .client
-            .request(Q::METHOD, url.as_str())
-            .header("user-agent", "bitmax-rs");
+        let req = match Q::METHOD {
+            Method::GET => self.client.request(
+                Q::METHOD,
+                Url::parse_with_params(&url, request.to_url_query())?.as_str(),
+            ),
+            Method::POST | Method::DELETE => {
+                debug!(
+                    "sending POST message: {:?}",
+                    serde_json::to_string(&request)
+                );
+                self.client
+                    .request(Q::METHOD, url.as_str())
+                    .body(serde_json::to_string(&request)?)
+                    .header("content-type", "application/json")
+            }
+            _ => failure::bail!("unsupported method {}", Q::METHOD),
+        };
+
+        let req = req.header("user-agent", "bitmax-rs");
 
         let req = if Q::NEEDS_AUTH {
             self.attach_auth_headers(req, Q::API_PATH)?
@@ -136,11 +149,19 @@ impl BitMaxClient {
                         Err(failure::format_err!("Non zero response code: {:?}", resp))
                     }
                 }
-                Err(e) => Err(e.into()),
+                Err(e) => Err(failure::format_err!(
+                    "error {} while deserializing {}",
+                    e,
+                    resp
+                )),
             }
         } else {
             let resp_e = resp.error_for_status_ref().unwrap_err();
-            Err(resp_e.into())
+            Err(failure::format_err!(
+                "error: {}; body: {};",
+                resp_e,
+                resp.text().await?
+            ))
         }
     }
 }

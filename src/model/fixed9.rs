@@ -1,10 +1,10 @@
+use failure::Fallible;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
     ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign},
+    str::FromStr,
 };
-use std::str::FromStr;
-use failure::Fallible;
 
 // Fixed9 represents a fixed-point number with precision 10^-9
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Default, Debug)]
@@ -150,10 +150,9 @@ impl FromStr for Fixed9 {
                 } else {
                     let value = if value.len() > 9 { &value[..9] } else { value };
 
-                    value
-                        .parse::<i64>()
-                        .map_err(|_| failure::format_err!("couldn't parse float part of fixed9 value"))?
-                        * MULT_TABLE[9 - value.len()]
+                    value.parse::<i64>().map_err(|_| {
+                        failure::format_err!("couldn't parse float part of fixed9 value")
+                    })? * MULT_TABLE[9 - value.len()]
                 }
             }
             None => 0,

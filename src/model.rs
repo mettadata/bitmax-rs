@@ -1,13 +1,38 @@
-use serde::{de, Deserialize, Deserializer, Serialize};
+use serde::{
+    de::{self, IntoDeserializer},
+    Deserialize, Deserializer, Serialize,
+};
 
 mod fixed9;
 
 pub use fixed9::Fixed9;
 
+fn empty_string_as_none<'de, D, T>(de: D) -> Result<Option<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::Deserialize<'de>,
+{
+    let opt = Option::<String>::deserialize(de)?;
+    let opt = opt.as_ref().map(String::as_str);
+    match opt {
+        None | Some("") => Ok(None),
+        Some(s) => T::deserialize(s.into_deserializer()).map(Some),
+    }
+}
+
 fn de_f64_str<'de, D: Deserializer<'de>>(deserializer: D) -> Result<f64, D::Error> {
     let s: &str = Deserialize::deserialize(deserializer)?;
 
     s.parse::<f64>().map_err(de::Error::custom)
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AccountType {
+    #[serde(alias = "CASH")]
+    Cash,
+    #[serde(alias = "MARGIN")]
+    Margin,
 }
 
 // Price/qty pair
@@ -121,6 +146,8 @@ pub enum MessageType {
     Bar,
     DepthSnapshot,
     Trades,
+    PlaceOrder,
+    CancelOrder,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -187,28 +214,27 @@ pub struct Trade {
 #[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AccountInfo {
-    account_group: u8,
-    email: String,
-    cash_account: Vec<String>,
-    margin_account: Vec<String>,
-    futures_account: Vec<String>,
-    trade_permission: bool,
-    transfer_permission: bool,
-    view_permission: bool,
+    pub account_group: u8,
+    pub email: String,
+    pub cash_account: Vec<String>,
+    pub margin_account: Vec<String>,
+    pub futures_account: Vec<String>,
+    pub trade_permission: bool,
+    pub transfer_permission: bool,
+    pub view_permission: bool,
     #[serde(rename = "userUID")]
-    user_uid: String,
+    pub user_uid: String,
 }
 
 #[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Balance {
-    asset: String,
-    total_balance: Fixed9,
-    available_balance: Fixed9,
-    borrowed: Option<Fixed9>, // margin account only
-    interest: Option<Fixed9>, // margin account only
+    pub asset: String,
+    pub total_balance: Fixed9,
+    pub available_balance: Fixed9,
+    pub borrowed: Option<Fixed9>, // margin account only
+    pub interest: Option<Fixed9>, // margin account only
 }
-
 
 /// All balances are in USDT
 #[derive(Deserialize, Clone, Debug)]
@@ -231,4 +257,192 @@ pub struct MarginRisk {
     pub current_leverage: f64,
     #[serde(deserialize_with = "de_f64_str")]
     pub cushion: f64,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DepositAddress {
+    pub asset: String,
+    pub asset_name: String,
+    pub address: Vec<DepositBlockchainAddress>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DepositBlockchainAddress {
+    pub address: String,
+    pub blockchain: String,
+    pub dest_tag: String,
+}
+
+#[derive(Deserialize, Serialize, Copy, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum TransactionType {
+    Deposit,
+    Withdrawal,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DestAddress {
+    pub address: String,
+    pub dest_tag: Option<String>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum TransactionStatus {
+    Pending,
+    Reviewing,
+    Confirmed,
+    Rejected,
+    Canceled,
+    Failed,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionHistoryEntry {
+    pub asset: String,
+    pub amount: Fixed9,
+    pub commission: Fixed9,
+    pub dest_address: DestAddress,
+    pub network_transaction_id: String,
+    pub num_confirmations: u32,
+    pub num_confirmed: u32,
+    pub request_id: String,
+    pub status: TransactionStatus,
+    pub time: i64,
+    pub transaction_type: TransactionType,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionHistory {
+    pub data: Vec<TransactionHistoryEntry>,
+    pub has_next: bool,
+    pub page: u32,
+    pub page_size: u32,
+}
+
+#[derive(Deserialize, Serialize, Copy, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum OrderType {
+    #[serde(alias = "Market")]
+    Market,
+    #[serde(alias = "Limit")]
+    Limit,
+}
+
+#[derive(Deserialize, Serialize, Copy, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum OrderSide {
+    #[serde(alias = "Buy")]
+    Buy,
+    #[serde(alias = "Sell")]
+    Sell,
+}
+
+#[derive(Deserialize, Serialize, Copy, Clone, Debug)]
+pub enum TimeInForce {
+    GTC,
+    IOC,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AckOrderInfo {
+    pub id: String,
+    pub order_id: String,
+    pub order_type: OrderType,
+    pub symbol: String,
+    pub timestamp: i64,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub enum ExecInstruction {
+    #[serde(rename = "POST")]
+    Post,
+    Liquidation,
+    #[serde(rename = "NULL_VAL")]
+    Null,
+}
+#[derive(Deserialize, Clone, Debug)]
+pub enum OrderStatus {
+    New,
+    PendingNew,
+    PartiallyFilled,
+    Filled,
+    Rejected,
+    Canceled,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Order {
+    pub avg_px: Fixed9,
+    pub cum_fee: Fixed9,
+    pub cum_filled_qty: Fixed9,
+    #[serde(deserialize_with = "empty_string_as_none")]
+    pub error_code: Option<String>,
+    pub fee_asset: String,
+    pub last_exec_time: i64,
+    pub order_id: String,
+    pub order_qty: Fixed9,
+    pub order_type: OrderType,
+    pub price: Fixed9,
+    pub seq_num: u64,
+    pub side: OrderSide,
+    #[serde(deserialize_with = "empty_string_as_none")]
+    pub stop_price: Option<Fixed9>,
+    pub symbol: String,
+    pub status: OrderStatus,
+    pub exec_inst: ExecInstruction,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(tag = "status", content = "info", rename_all = "UPPERCASE")]
+pub enum PlaceOrderInfo {
+    Done(Order),
+    Accept(Order),
+    #[serde(rename = "Ack")]
+    Acknowledged(AckOrderInfo),
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaceOrderResponse {
+    pub ac: AccountType,
+    pub account_id: String,
+    pub action: MessageType,
+    #[serde(flatten)]
+    pub info: PlaceOrderInfo,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AckCancelInfo {
+    pub id: String,
+    pub order_id: String,
+    #[serde(deserialize_with = "empty_string_as_none")]
+    pub order_type: Option<OrderType>,
+    pub symbol: String,
+    pub timestamp: i64,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(tag = "status", content = "info")]
+pub enum CancelOrderInfo {
+    #[serde(rename = "Ack")]
+    Acknowledged(AckCancelInfo),
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CancelOrderResponse {
+    pub account_id: String,
+    pub ac: AccountType,
+    pub action: MessageType,
+    #[serde(flatten)]
+    pub info: CancelOrderInfo,
 }

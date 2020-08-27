@@ -1,9 +1,12 @@
+use std::fmt;
+
 use serde::{
     de::{self, IntoDeserializer},
     Deserialize, Deserializer, Serialize,
 };
 
 mod fixed9;
+pub mod websocket;
 
 pub use fixed9::Fixed9;
 
@@ -136,6 +139,29 @@ pub enum Interval {
     T1w,
     #[serde(rename = "1m")]
     T1M,
+}
+
+impl fmt::Display for Interval {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::T1m => "1",
+                Self::T5m => "5",
+                Self::T15m => "15",
+                Self::T30m => "30",
+                Self::T60m => "60",
+                Self::T120m => "120",
+                Self::T240m => "240",
+                Self::T360m => "360",
+                Self::T720m => "720",
+                Self::T1d => "1d",
+                Self::T1w => "1w",
+                Self::T1M => "1m",
+            }
+        )
+    }
 }
 
 #[derive(Deserialize, Clone, Debug)]

@@ -2,9 +2,9 @@ use chrono::Utc;
 use failure::Fallible;
 use hmac::{Hmac, Mac, NewMac};
 use log::debug;
-use reqwest::{Client, Method, RequestBuilder, Response};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use serde_json::{from_str, to_string, to_value, Value};
+use reqwest::{Client, Method, Response};
+use serde::{de::DeserializeOwned, Deserialize};
+use serde_json::from_str;
 use sha2::Sha256;
 use url::Url;
 
@@ -15,8 +15,8 @@ mod websocket;
 use request::Request;
 use util::{HeaderBuilder, ToUrlQuery};
 
-const HTTP_URL: &'static str = "bitmax.io";
-const API_URL: &'static str = "/api/pro/v1";
+const HTTP_URL: &str = "bitmax.io";
+const API_URL: &str = "/api/pro/v1";
 
 #[derive(Debug, Clone)]
 struct Auth {

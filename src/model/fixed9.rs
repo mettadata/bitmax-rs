@@ -112,7 +112,7 @@ impl<'de> Visitor<'de> for Fixed9Visitor {
     where
         E: serde::de::Error,
     {
-        v.parse().map_err(|e| E::custom(e))
+        v.parse().map_err(E::custom)
     }
 }
 

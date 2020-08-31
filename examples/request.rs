@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use bitmax_rs::{model, request, BitMaxClient};
 use failure::Fallible;
 
@@ -19,7 +20,7 @@ async fn main() -> Fallible<()> {
 
     let c = BitMaxClient::with_auth(&public_key, &private_key, Some(6))?;
 
-    //req(&c, request::Products).await;
+    req(&c, request::Products).await;
 
     //req(&c, request::Ticker { symbol: "BNB/USDT" }).await;
 

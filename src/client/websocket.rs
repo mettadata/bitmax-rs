@@ -86,7 +86,8 @@ fn parse_message(msg: TungsteniteWSMessage) -> Fallible<WsInMessage> {
 
     debug!("Incoming websocket message {}", msg);
 
-    Ok(serde_json::from_str(&msg)?)
+    serde_json::from_str(&msg)
+        .map_err(|e| failure::format_err!("could not deserialize {}, error: {:#?}", msg, e))
 }
 
 impl<'a> Sink<WsOutMessage<'a>> for BitMaxWebsocket {

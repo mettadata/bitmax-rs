@@ -12,22 +12,47 @@ async fn main() -> Fallible<()> {
     let c = BitMaxClient::with_auth(&public_key, &private_key, Some(6))?;
     let mut ws = c.websocket_all().await?;
 
-    /*
-    ws.send(model::websocket::WsOutMessage::Subscribe {
-        id: None,
-        ch: model::websocket::SubscribeTopic::Depth {
-            symbol: "BTMX/USDT",
-        },
-    })
-    .await?;
-    */
-    ws.send(model::websocket::WsOutMessage::Subscribe {
-        id: None,
-        ch: model::websocket::SubscribeTopic::Trades {
-            symbol: "BTMX/USDT",
-        },
-    })
-    .await?;
+    //ws.send(model::websocket::WsOutMessage::Subscribe {
+    //    id: None,
+    //    ch: model::websocket::SubscribeTopic::Depth {
+    //        symbol: "BTMX/USDT",
+    //    },
+    //})
+    //.await?;
+
+    //ws.send(model::websocket::WsOutMessage::Subscribe {
+    //    id: None,
+    //    ch: model::websocket::SubscribeTopic::Trades {
+    //        symbol: "BTMX/USDT",
+    //    },
+    //})
+    //.await?;
+
+    //ws.send(model::websocket::WsOutMessage::Subscribe {
+    //    id: None,
+    //    ch: model::websocket::SubscribeTopic::Bbo {
+    //        symbol: "BTMX/USDT",
+    //    },
+    //})
+    //.await?;
+
+    //ws.send(model::websocket::WsOutMessage::Subscribe {
+    //    id: None,
+    //    ch: model::websocket::SubscribeTopic::RefPx {
+    //        symbol: "BTMX/USDT",
+    //    },
+    //})
+    //.await?;
+
+    //ws.send(model::websocket::WsOutMessage::Subscribe {
+    //    id: None,
+    //    ch: model::websocket::SubscribeTopic::Bar {
+    //        symbol: "BTMX/USDT",
+    //        interval: model::Interval::T1m,
+    //    },
+    //})
+    //.await?;
+
     while let Some(msg) = ws.next().await {
         if let Ok(model::websocket::WsInMessage::Ping { .. }) = msg {
             ws.send(model::websocket::WsOutMessage::Pong).await?;

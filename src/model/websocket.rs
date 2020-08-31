@@ -63,7 +63,7 @@ pub enum AuthType {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-#[serde(tag = "m", rename_all = "lowercase")]
+#[serde(tag = "m", rename_all = "kebab-case")]
 pub enum WsInMessage {
     Ping {
         hp: u8,
@@ -94,7 +94,6 @@ pub enum WsInMessage {
         data: DepthData,
     },
     Bbo {
-        ts: i64,
         symbol: String,
         data: BboData,
     },
@@ -103,8 +102,13 @@ pub enum WsInMessage {
         data: Vec<Trade>,
     },
     Bar {
+        #[serde(rename = "s")]
         symbol: String,
         data: BarData,
+    },
+    RefPx {
+        symbol: String,
+        data: RefPxData,
     },
 }
 
@@ -118,6 +122,7 @@ pub struct DepthData {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct BboData {
+    pub ts: i64,
     pub bid: PriceQty,
     pub ask: PriceQty,
 }
@@ -146,6 +151,12 @@ pub struct BarData {
     pub high: Fixed9,
     #[serde(rename = "l")]
     pub low: Fixed9,
-    #[serde(deserialize_with = "de_f64_str")]
+    #[serde(rename = "v", deserialize_with = "de_f64_str")]
     pub volume: f64,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct RefPxData {
+    qa: String,
+    p: Fixed9,
 }

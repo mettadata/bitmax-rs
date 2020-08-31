@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize, Serializer};
 
 use crate::model::{de_f64_str, Fixed9, Interval, PriceQty};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum SubscribeTopic<'a> {
     Depth { symbol: &'a str },
     Bbo { symbol: &'a str },
@@ -50,7 +50,10 @@ pub enum WsOutMessage<'a> {
         id: Option<&'a str>,
     },
     #[serde(rename = "unsub")]
-    Unsubscribe { ch: &'a str },
+    Unsubscribe {
+        ch: SubscribeTopic<'a>,
+        id: Option<&'a str>,
+    },
     #[serde(rename = "pong")]
     Pong,
 }
@@ -85,6 +88,12 @@ pub enum WsInMessage {
     Closed,
     #[serde(rename = "sub")]
     Subscribed {
+        id: Option<String>,
+        code: u32,
+        ch: String,
+    },
+    #[serde(rename = "unsub")]
+    Unsubscribed {
         id: Option<String>,
         code: u32,
         ch: String,

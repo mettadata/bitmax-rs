@@ -113,7 +113,7 @@ pub struct Ticker {
     pub type_: SymbolType,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub enum Interval {
     #[serde(rename = "1")]
     T1m,

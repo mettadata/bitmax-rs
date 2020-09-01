@@ -2,18 +2,21 @@ use chrono::Utc;
 use failure::Fallible;
 use hmac::{Hmac, Mac, NewMac};
 use log::debug;
-use reqwest::{Client, Method, RequestBuilder, Response};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use serde_json::{from_str, to_string, to_value, Value};
+use reqwest::{Client, Method, Response};
+use serde::{de::DeserializeOwned, Deserialize};
+use serde_json::from_str;
 use sha2::Sha256;
 use url::Url;
 
 pub mod request;
+mod util;
+mod websocket;
 
 use request::Request;
+use util::{HeaderBuilder, ToUrlQuery};
 
-const HTTP_URL: &'static str = "https://bitmax.io";
-const API_URL: &'static str = "/api/pro/v1";
+const HTTP_URL: &str = "bitmax.io";
+const API_URL: &str = "/api/pro/v1";
 
 #[derive(Debug, Clone)]
 struct Auth {
@@ -65,11 +68,7 @@ impl BitMaxClient {
         Ok(())
     }
 
-    fn attach_auth_headers(
-        &self,
-        builder: RequestBuilder,
-        api_path: &str,
-    ) -> Fallible<RequestBuilder> {
+    fn attach_auth_headers<B: HeaderBuilder>(&self, builder: B, api_path: &str) -> Fallible<B> {
         let auth = self
             .auth
             .as_ref()
@@ -84,26 +83,36 @@ impl BitMaxClient {
         let signature = base64::encode(mac.finalize().into_bytes());
 
         Ok(builder
-            .header("x-auth-key", &auth.public_key)
-            .header("x-auth-timestamp", timestamp.to_string())
-            .header("x-auth-signature", &signature))
+            .add_header("x-auth-key", &auth.public_key)
+            .add_header("x-auth-timestamp", &timestamp.to_string())
+            .add_header("x-auth-signature", &signature))
     }
 
-    pub async fn request<Q: Request>(&self, request: Q) -> Fallible<Q::Response> {
-        let url = if Q::NEEDS_ACCOUNT_GROUP {
+    fn render_url(
+        &self,
+        protocol: &str,
+        endpoint: &str,
+        add_account_group: bool,
+    ) -> Fallible<String> {
+        Ok(if add_account_group {
             format!(
-                "{}/{}{}{}",
+                "{}://{}/{}{}{}",
+                protocol,
                 HTTP_URL,
                 self.auth
                     .as_ref()
                     .and_then(|a| a.account_group.as_ref())
                     .ok_or_else(|| failure::format_err!("missing account group"))?,
                 API_URL,
-                request.render_endpoint()
+                endpoint
             )
         } else {
-            format!("{}{}{}", HTTP_URL, API_URL, request.render_endpoint())
-        };
+            format!("{}://{}{}{}", protocol, HTTP_URL, API_URL, endpoint)
+        })
+    }
+
+    pub async fn request<Q: Request>(&self, request: Q) -> Fallible<Q::Response> {
+        let url = self.render_url(&request.render_endpoint(), "https", Q::NEEDS_ACCOUNT_GROUP)?;
 
         let req = match Q::METHOD {
             Method::GET => self.client.request(
@@ -165,34 +174,3 @@ impl BitMaxClient {
         }
     }
 }
-
-trait ToUrlQuery: Serialize {
-    fn to_url_query(&self) -> Vec<(String, String)> {
-        let v = to_value(self).unwrap();
-        let v = match v {
-            Value::Null => return vec![],
-            Value::Object(v) => v,
-            _ => panic!("expected struct as url params"),
-        };
-
-        let mut vec: Vec<(String, String)> = vec![];
-
-        for (key, value) in v.into_iter() {
-            match value {
-                Value::Null => continue,
-                Value::String(s) => vec.push((key, s)),
-                Value::Array(a) => vec.push((
-                    key,
-                    a.iter()
-                        .map(|v| v.as_str().unwrap())
-                        .collect::<Vec<_>>()
-                        .join(","),
-                )),
-                v => vec.push((key, to_string(&v).unwrap())),
-            }
-        }
-        vec
-    }
-}
-
-impl<S: Serialize> ToUrlQuery for S {}

@@ -18,6 +18,10 @@ log = "0.4"
 hmac = "0.8"
 sha2 = "0.9"
 base64 = "0.12"
+tokio = "0.2"
+tokio-tungstenite = { version = "0.10", features = ["connect", "tls"] }
+pin-project = "0.4"
+futures = "0.3"
 
 [dev-dependencies]
 tokio = { version = "0.2", features = ["macros", "rt-threaded"] }

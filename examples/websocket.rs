@@ -1,0 +1,78 @@
+use std::time::{Duration, Instant};
+
+use bitmax_rs::{model, BitMaxClient};
+use failure::Fallible;
+use futures::{SinkExt, StreamExt};
+
+#[tokio::main]
+async fn main() -> Fallible<()> {
+    env_logger::init();
+
+    let private_key: String = std::env::var("BITMAX_PRIVATE").unwrap();
+    let public_key: String = std::env::var("BITMAX_PUBLIC").unwrap();
+
+    let c = BitMaxClient::with_auth(&public_key, &private_key, Some(6))?;
+    let mut ws = c.websocket_all().await?;
+
+    //ws.send(model::websocket::WsOutMessage::Subscribe {
+    //    id: None,
+    //    ch: model::websocket::SubscribeTopic::Trades {
+    //        symbol: "BTMX/USDT",
+    //    },
+    //})
+    //.await?;
+
+    //ws.send(model::websocket::WsOutMessage::Subscribe {
+    //    id: None,
+    //    ch: model::websocket::SubscribeTopic::Bbo {
+    //        symbol: "BTMX/USDT",
+    //    },
+    //})
+    //.await?;
+
+    //ws.send(model::websocket::WsOutMessage::Subscribe {
+    //    id: None,
+    //    ch: model::websocket::SubscribeTopic::RefPx {
+    //        symbol: "BTMX/USDT",
+    //    },
+    //})
+    //.await?;
+
+    //ws.send(model::websocket::WsOutMessage::Subscribe {
+    //    id: None,
+    //    ch: model::websocket::SubscribeTopic::Bar {
+    //        symbol: "BTMX/USDT",
+    //        interval: model::Interval::T1m,
+    //    },
+    //})
+    //.await?;
+
+    let ch = model::websocket::SubscribeTopic::Depth {
+        symbol: "BTMX/USDT",
+    };
+
+    ws.send(model::websocket::WsOutMessage::Subscribe { id: None, ch })
+        .await?;
+
+    let time = std::time::Instant::now();
+    let mut subbed = true;
+    let dt = Duration::from_secs(10);
+
+    // Iterate through message queue
+    while let Some(msg) = ws.next().await {
+        // Send ping responses
+        if let Ok(model::websocket::WsInMessage::Ping { .. }) = msg {
+            ws.send(model::websocket::WsOutMessage::Pong).await?;
+        }
+
+        // when 10 seconds elapse, unsub from the messages
+        if subbed && (Instant::now() - time) > dt {
+            ws.send(model::websocket::WsOutMessage::Unsubscribe { id: None, ch })
+                .await?;
+            subbed = false;
+        }
+
+        println!("{:#?}", msg);
+    }
+    Ok(())
+}

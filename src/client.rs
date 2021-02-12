@@ -10,7 +10,7 @@ use url::Url;
 
 pub mod request;
 mod util;
-mod websocket;
+pub mod websocket;
 
 use request::Request;
 use util::{HeaderBuilder, ToUrlQuery};
@@ -112,13 +112,14 @@ impl BitMaxClient {
     }
 
     pub async fn request<Q: Request>(&self, request: Q) -> Fallible<Q::Response> {
-        let url = self.render_url(&request.render_endpoint(), "https", Q::NEEDS_ACCOUNT_GROUP)?;
+        let url = self.render_url("https", &request.render_endpoint(), Q::NEEDS_ACCOUNT_GROUP)?;
 
         let req = match Q::METHOD {
-            Method::GET => self.client.request(
-                Q::METHOD,
-                Url::parse_with_params(&url, request.to_url_query())?.as_str(),
-            ),
+            Method::GET => {
+                let url = Url::parse_with_params(&url, request.to_url_query())?;
+                debug!("sending GET message: {:?}", url.as_str());
+                self.client.request(Q::METHOD, url.as_str())
+            }
             Method::POST | Method::DELETE => {
                 debug!(
                     "sending POST message: {:?}",

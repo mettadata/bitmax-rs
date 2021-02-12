@@ -447,7 +447,6 @@ pub enum PlaceOrderInfo {
 pub struct PlaceOrderResponse {
     pub ac: AccountType,
     pub account_id: String,
-    pub action: MessageType,
     #[serde(flatten)]
     pub info: PlaceOrderInfo,
 }
@@ -475,7 +474,6 @@ pub enum CancelOrderInfo {
 pub struct CancelOrderResponse {
     pub account_id: String,
     pub ac: AccountType,
-    pub action: MessageType,
     #[serde(flatten)]
     pub info: CancelOrderInfo,
 }
@@ -499,7 +497,6 @@ pub enum CancelAllInfo {
 pub struct CancelAllResponse {
     pub account_id: String,
     pub ac: AccountType,
-    pub action: MessageType,
     #[serde(flatten)]
     pub info: CancelAllInfo,
 }

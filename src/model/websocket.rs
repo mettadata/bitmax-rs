@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize, Serializer};
 
-use crate::model::{de_f64_str, Fixed9, Interval, PriceQty};
+use crate::{
+    model::{self, de_f64_str, AccountType, Fixed9, Interval, PriceQty},
+    request,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub enum SubscribeTopic<'a> {
@@ -29,19 +32,20 @@ impl<'a> Serialize for SubscribeTopic<'a> {
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
-pub enum WsRequest {
-    PlaceOrder,
+#[serde(tag = "action", content = "args", rename_all = "kebab-case")]
+pub enum WsRequest<'a> {
+    PlaceOrder(request::PlaceOrder<'a>),
     CancelOrder,
     CancelAll,
-    DepthSnapshot,
-    DepthSnapshotTop100,
+    DepthSnapshot { symbol: &'a str },
+    DepthSnapshotTop100 { symbol: &'a str },
     MarketTrades,
     Balance,
     OpenOrder,
     MarginRisk,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 #[serde(tag = "op")]
 pub enum WsOutMessage<'a> {
     #[serde(rename = "sub")]
@@ -53,6 +57,13 @@ pub enum WsOutMessage<'a> {
     Unsubscribe {
         ch: SubscribeTopic<'a>,
         id: Option<&'a str>,
+    },
+    #[serde(rename = "req")]
+    Request {
+        #[serde(flatten)]
+        action: WsRequest<'a>,
+        id: Option<&'a str>,
+        account: Option<AccountType>,
     },
     #[serde(rename = "pong")]
     Pong,
@@ -119,6 +130,14 @@ pub enum WsInMessage {
         symbol: String,
         data: RefPxData,
     },
+    DepthSnapshot {
+        symbol: String,
+        data: DepthData,
+    },
+    Order {
+        #[serde(flatten)]
+        action: OrderAction,
+    },
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -168,4 +187,11 @@ pub struct BarData {
 pub struct RefPxData {
     qa: String,
     p: Fixed9,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(tag = "action")]
+pub enum OrderAction {
+    #[serde(rename = "place-order")]
+    Place(model::PlaceOrderResponse),
 }

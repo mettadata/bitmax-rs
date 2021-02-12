@@ -276,7 +276,7 @@ impl Request for TransactionHistory<'_> {
     const API_PATH: &'static str = "/wallet/transactions";
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone, Copy, Debug)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum ResponseInstruction {
     #[serde(rename = "ACK")]
@@ -288,7 +288,7 @@ pub enum ResponseInstruction {
 /// Refer to https://bitmax-exchange.github.io/bitmax-pro-api/#place-order
 /// in order to ensure that your request is well-formed.
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone, Copy, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaceOrder<'a> {
     #[serde(skip)]
